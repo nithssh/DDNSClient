@@ -2,19 +2,23 @@ namespace DDNSClient;
 
 public class WindowsBackgroundService : BackgroundService
 {
+    private readonly Client _client;
     private readonly ILogger<WindowsBackgroundService> _logger;
 
-    public WindowsBackgroundService(ILogger<WindowsBackgroundService> logger)
+    public WindowsBackgroundService(Client client, ILogger<WindowsBackgroundService> logger)
     {
         _logger = logger;
+        _client = client;
+        _client.Initialize();
+        _logger.LogInformation("Service Started");
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
-            await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+            _client.Update();
+            await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
         }
     }
 }
