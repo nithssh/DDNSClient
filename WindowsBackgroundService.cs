@@ -9,7 +9,7 @@ public class WindowsBackgroundService : BackgroundService
     {
         _logger = logger;
         _client = client;
-        _client.Initialize();
+        _client.Initialize().Wait();
         _logger.LogInformation("Service Started");
     }
 

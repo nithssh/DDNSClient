@@ -1,9 +1,6 @@
 ﻿using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Runtime.InteropServices;
+using System.Net.Sockets;
 using System.Text;
 
 namespace DDNSClient;
@@ -14,12 +11,12 @@ public sealed class Client
     readonly ILogger Logger;
     readonly HttpClient HttpClient = new();
 
-    public Client(ILogger<Client> logger, IOptions<DDNSConfig> options)
+    public Client(ILogger<WindowsBackgroundService> logger, IOptions<DDNSConfig> options)
     {
         Logger = logger;
 
         // unpack the config options
-        User = options.Value.Username; 
+        User = options.Value.Username;
         Password = options.Value.Password;
         UserAgent = "DDNSClient/1.0 " + options.Value.Email;
         Hostname = options.Value.Hostname;
@@ -30,18 +27,35 @@ public sealed class Client
         //HttpClient.DefaultRequestHeaders.UserAgent = userAgent;
     }
 
-    public async void Initialize()
+    public async Task<int> Initialize()
     {
         try
         {
             Ip = await GetCurrentIP();
-            PerformDNSUpdate();
-        } catch (HttpRequestException ex)
+            string _ddnsIp = Dns.GetHostAddresses(Hostname)[0]?.ToString(); // To avoid spamming requests when debugging
+            if (_ddnsIp != Ip)
+            {
+                Logger.LogInformation("DNS record and current IP are different, initiating update.");
+                PerformDNSUpdate();
+            }
+            else
+            {
+                Logger.LogInformation("DNS record and current IP are the same. Not performing init update.");
+            }
+        }
+        catch (HttpRequestException ex)
         {
             Logger.LogError("HTTP Error: {ExMessage}", ex.Message);
             // TODO handle network error (not connected)
             Environment.Exit(2);
         }
+        catch (SocketException ex) 
+        {
+            Logger.LogInformation("No existing DNS record for the give hostname. Exception: {ExMessage}", ex.Message);
+            PerformDNSUpdate();
+        }
+
+        return 0;
     }
 
     public async void Update()
@@ -70,12 +84,12 @@ public sealed class Client
         RetCode = await HttpClient.GetStringAsync(reqURI);
         if (!RetCode.StartsWith("good") && !RetCode.StartsWith("nochg"))
         {
-            Logger.LogError("Error with DNS update request: {Error} \nExiting...", RetCode);
+            Logger.LogError("Error with DNS update request: {RetCode} \nExiting...", RetCode);
             Environment.Exit(1);
         }
         else
         {
-            Logger.LogInformation("DNS update successful. Return code: ", RetCode);
+            Logger.LogInformation("DNS update successful. Return code: {RetCode}", RetCode);
         }
     }
 
