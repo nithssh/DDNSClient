@@ -23,10 +23,9 @@ public sealed class Client
         // configure the HTTP client
         HttpClient.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", "Basic" + Convert.ToBase64String(Encoding.UTF8.GetBytes($"{User}:{Password}")));
         HttpClient.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", UserAgent);
-        //HttpClient.DefaultRequestHeaders.UserAgent = userAgent;
     }
 
-    public async void Initialize()
+    public async Task<int> Initialize()
     {
         try
         {
@@ -38,6 +37,7 @@ public sealed class Client
             Logger.LogError("HTTP Error: {ExMessage}", ex.Message);
             LastResult = Result.NetworkError;
         }
+        return 0;
     }
 
     public async void Update()
